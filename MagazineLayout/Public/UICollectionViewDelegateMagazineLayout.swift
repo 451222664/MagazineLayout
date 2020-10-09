@@ -288,6 +288,18 @@ public protocol UICollectionViewDelegateMagazineLayout: UICollectionViewDelegate
     finalLayoutAttributesForRemovedBackgroundInSectionAtIndex index: Int,
     byModifying finalLayoutAttributes: UICollectionViewLayoutAttributes)
 
+
+    /// Returns whether a section wants a waterfall flow layout
+    /// - Parameters:
+    ///   - collectionView: UICollectionView
+    ///   - collectionViewLayout: UICollectionViewLayout
+    ///   - index: section index
+    func collectionView(
+      _ collectionView: UICollectionView,
+      layout collectionViewLayout: UICollectionViewLayout,
+      waterfallFlowModeForItemAt index: Int)
+      -> MagazineLayoutWaterfallFlowMode?
+
 }
 
 // MARK: Default Insert Animations
@@ -385,5 +397,18 @@ public extension UICollectionViewDelegateMagazineLayout {
     // The default delete animation is a simple fade-out.
     finalLayoutAttributes.alpha = 0
   }
+
+}
+
+public extension UICollectionViewDelegateMagazineLayout {
+
+    func collectionView(
+    _ collectionView: UICollectionView,
+    layout collectionViewLayout: UICollectionViewLayout,
+    waterfallFlowModeForItemAt index: Int)
+        -> MagazineLayoutWaterfallFlowMode?
+    {
+            return nil
+    }
 
 }

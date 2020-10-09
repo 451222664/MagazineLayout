@@ -1037,12 +1037,17 @@ public final class MagazineLayout: UICollectionViewLayout {
     let itemModels = (0..<currentCollectionView.numberOfItems(inSection: sectionIndex)).map {
       itemModelForItem(at: IndexPath(item: $0, section: sectionIndex))
     }
+    // waterfall flow
+    let waterfallFlow = delegateMagazineLayout?.collectionView(currentCollectionView,
+                                                               layout: self,
+                                                               waterfallFlowModeForItemAt: sectionIndex)
 
     return SectionModel(
       itemModels: itemModels,
       headerModel: headerModelForHeader(inSectionAtIndex: sectionIndex),
       footerModel: footerModelForFooter(inSectionAtIndex: sectionIndex),
       backgroundModel: backgroundModelForBackground(inSectionAtIndex: sectionIndex),
+      waterfallFlowMode: waterfallFlow,
       metrics: metricsForSection(atIndex: sectionIndex))
   }
 

@@ -310,12 +310,86 @@ final class ViewController: UIViewController {
       backgroundInfo: BackgroundInfo(visibilityMode: .hidden)
     )
 
+    let waterfallFlowSection = SectionInfo(
+      headerInfo: HeaderInfo(
+        visibilityMode: .visible(heightMode: .dynamic, pinToVisibleBounds: false),
+        title: "Self-sizing supplementary views (headers and footers) are also supported."),
+      itemInfos: [
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamic),
+            text: "1、If you really want to turn off self-sizing for a particular item...",
+            color: Colors.red),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .static(height: 200)),
+            text: "2、you can, but any dynamic content could get truncated or have too much padding.",
+            color: Colors.red),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamic),
+            text: "3、You can also ask items to size dynamically first, but ultimately stretch to match the tallest item in the same row of items.",
+            color: Colors.orange),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamic),
+            text: "4、I'm the tallest item because I have so much text...",
+            color: Colors.orange),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamicAndStretchToTallestItemInRow),
+            text: "5、and I'll stretch to match your height.",
+            color: Colors.orange),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamic),
+            text: "6、If you really want to turn off self-sizing for a particular item...",
+            color: Colors.red),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .static(height: 200)),
+            text: "7、you can, but any dynamic content could get truncated or have too much padding.",
+            color: Colors.red),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamic),
+            text: "8、You can also ask items to size dynamically first, but ultimately stretch to match the tallest item in the same row of items.",
+            color: Colors.orange),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamic),
+            text: "9、I'm the tallest item because I have so much text...",
+            color: Colors.orange),
+        ItemInfo(
+            sizeMode: MagazineLayoutItemSizeMode(
+                widthMode: .halfWidth,
+                heightMode: .dynamicAndStretchToTallestItemInRow),
+            text: "10、and I'll stretch to match your height.",
+            color: Colors.orange),
+        ],
+      footerInfo: FooterInfo(
+        visibilityMode: .hidden,
+        title: ""),
+      backgroundInfo: BackgroundInfo(visibilityMode: .visible),
+      waterfallFlowMode: .halfWidth
+    )
+
     collectionView.performBatchUpdates({
       dataSource.insert(section0, atSectionIndex: 0)
       dataSource.insert(section1, atSectionIndex: 1)
       dataSource.insert(section2, atSectionIndex: 2)
+      dataSource.insert(waterfallFlowSection, atSectionIndex: 3)
 
-      collectionView.insertSections(IndexSet(arrayLiteral: 0, 1, 2))
+      collectionView.insertSections(IndexSet(arrayLiteral: 0, 1, 2, 3))
     }, completion: nil)
   }
 
@@ -473,6 +547,15 @@ extension ViewController: UICollectionViewDelegateMagazineLayout {
   {
     return dataSource.sectionInfos[index].backgroundInfo.visibilityMode
   }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        layout collectionViewLayout: UICollectionViewLayout,
+        waterfallFlowModeForItemAt index: Int)
+        -> MagazineLayoutWaterfallFlowMode?
+    {
+        return dataSource.sectionInfos[index].waterfallFlowMode
+    }
 
   func collectionView(
     _ collectionView: UICollectionView,

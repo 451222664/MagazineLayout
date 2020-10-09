@@ -26,6 +26,7 @@ struct SectionModel {
     headerModel: HeaderModel?,
     footerModel: FooterModel?,
     backgroundModel: BackgroundModel?,
+    waterfallFlowMode: MagazineLayoutWaterfallFlowMode? = nil,
     metrics: MagazineLayoutSectionMetrics)
   {
     id = NSUUID().uuidString
@@ -33,6 +34,7 @@ struct SectionModel {
     self.headerModel = headerModel
     self.footerModel = footerModel
     self.backgroundModel = backgroundModel
+    self.waterfallFlowMode = waterfallFlowMode
     self.metrics = metrics
     calculatedHeight = 0
     numberOfRows = 0
@@ -48,6 +50,7 @@ struct SectionModel {
   private(set) var headerModel: HeaderModel?
   private(set) var footerModel: FooterModel?
   private(set) var backgroundModel: BackgroundModel?
+  private(set) var waterfallFlowMode: MagazineLayoutWaterfallFlowMode?
 
   var visibleBounds: CGRect?
 
@@ -464,6 +467,10 @@ struct SectionModel {
 
     var currentY: CGFloat
 
+    // 瀑布流每列最底下frame
+    var waterfallFlowColumnDic = [Int: CGRect]()
+
+
     // Item frame calculations
 
     let startingItemIndex: Int
@@ -496,18 +503,23 @@ struct SectionModel {
       }
     }
 
+    func getNextIndex(now: Int, divisor: UInt)-> Int {
+        return (now+1) >= divisor ? 0 : now+1
+    }
+
     // Accessing this array using an unsafe, untyped (raw) pointer avoids expensive copy-on-writes
     // and Swift retain / release calls.
     let itemModelsPointer = UnsafeMutableRawPointer(mutating: &itemModels)
     let directlyMutableItemModels = itemModelsPointer.assumingMemoryBound(to: ItemModel.self)
 
     var indexInCurrentRow = 0
+    let preHeaderY = currentY
     for itemIndex in startingItemIndex..<numberOfItems {
       // Create item / row index mappings
       itemIndicesForRowIndices[rowIndex] = itemIndicesForRowIndices[rowIndex] ?? []
       itemIndicesForRowIndices[rowIndex]?.append(itemIndex)
       rowIndicesForItemIndices[itemIndex] = rowIndex
-      
+
       let itemModel = itemModels[itemIndex]
 
       if itemIndex == 0 {
@@ -525,38 +537,88 @@ struct SectionModel {
         availableWidthForItems = metrics.width - metrics.itemInsets.left - metrics.itemInsets.right
       }
 
-      let totalSpacing = metrics.horizontalSpacing * (itemModel.sizeMode.widthMode.widthDivisor - 1)
-      let itemWidth = round(
-        (availableWidthForItems - totalSpacing) / itemModel.sizeMode.widthMode.widthDivisor)
-      let itemX = CGFloat(indexInCurrentRow) *
-        itemWidth + CGFloat(indexInCurrentRow) *
-        metrics.horizontalSpacing + currentLeadingMargin
-      let itemY = currentY
+        if self.waterfallFlowMode != nil {
 
-      directlyMutableItemModels[itemIndex].originInSection = CGPoint(x: itemX, y: itemY)
-      directlyMutableItemModels[itemIndex].size.width = itemWidth
+            // enter waterfall flow mode
+            switch self.waterfallFlowMode! {
+            case .fractionalWidth(divisor: let divisor): // Ignore sizeMode's widthDivisor
 
-      if
-        (indexInCurrentRow == Int(itemModel.sizeMode.widthMode.widthDivisor) - 1) ||
-          (itemIndex == numberOfItems - 1) ||
-          (itemIndex < numberOfItems - 1 && itemModels[itemIndex + 1].sizeMode.widthMode != itemModel.sizeMode.widthMode)
-      {
-        // We've reached the end of the current row, or there are no more items to lay out, or we're
-        // about to lay out an item with a different width mode. In all cases, we're done laying out
-        // the current row of items.
-        let heightOfTallestItemInCurrentRow = updateHeightsForItemsInRow(at: rowIndex)
-        currentY += heightOfTallestItemInCurrentRow
-        indexInCurrentRow = 0
+                let totalSpacing = metrics.horizontalSpacing * (CGFloat(divisor) - 1)
+                let itemWidth = round(
+                  (availableWidthForItems - totalSpacing) / CGFloat(divisor))
 
-        // If there are more items to layout, add vertical spacing and increment the row index
-        if itemIndex < numberOfItems - 1 {
-          currentY += metrics.verticalSpacing
-          rowIndex += 1
+                var itemX: CGFloat = 0
+                var itemY: CGFloat = 0
+                let itemHeight = updateHeightsForItemsInRow(at: rowIndex)
+
+                if waterfallFlowColumnDic[indexInCurrentRow] == nil {
+                    // 第一行
+                    itemX = CGFloat(indexInCurrentRow) *
+                      itemWidth + CGFloat(indexInCurrentRow) *
+                      metrics.horizontalSpacing + currentLeadingMargin
+                    itemY = preHeaderY
+                } else {
+
+                    var minIndex = 0
+                    var minFrame = waterfallFlowColumnDic[0] ?? CGRect.zero
+                    for index in waterfallFlowColumnDic.keys {
+                        if (waterfallFlowColumnDic[index]?.maxY ?? 0) < minFrame.maxY {
+                            minIndex = index
+                            minFrame = waterfallFlowColumnDic[index] ?? CGRect.zero
+                        }
+                    }
+                    indexInCurrentRow = minIndex
+                    itemX = minFrame.minX
+                    itemY = minFrame.maxY + metrics.verticalSpacing
+                }
+
+                directlyMutableItemModels[itemIndex].originInSection = CGPoint(x: itemX, y: itemY)
+                directlyMutableItemModels[itemIndex].size.width = itemWidth
+
+                let itemFrame = CGRect(x: itemX, y: itemY, width: itemWidth, height: itemHeight)
+                waterfallFlowColumnDic.updateValue(itemFrame, forKey: indexInCurrentRow)
+                currentY = max(itemFrame.maxY, currentY)
+                rowIndex += 1
+
+                indexInCurrentRow = getNextIndex(now: indexInCurrentRow, divisor: divisor)
+            }
+
+        } else {
+
+            // normal 如果以后要自由的设置item size，可以在这改
+            let totalSpacing = metrics.horizontalSpacing * (itemModel.sizeMode.widthMode.widthDivisor - 1)
+            let itemWidth = round(
+              (availableWidthForItems - totalSpacing) / itemModel.sizeMode.widthMode.widthDivisor)
+            let itemX = CGFloat(indexInCurrentRow) *
+              itemWidth + CGFloat(indexInCurrentRow) *
+              metrics.horizontalSpacing + currentLeadingMargin
+            let itemY = currentY
+
+            directlyMutableItemModels[itemIndex].originInSection = CGPoint(x: itemX, y: itemY)
+            directlyMutableItemModels[itemIndex].size.width = itemWidth
+
+            if
+              (indexInCurrentRow == Int(itemModel.sizeMode.widthMode.widthDivisor) - 1) ||
+                (itemIndex == numberOfItems - 1) ||
+                (itemIndex < numberOfItems - 1 && itemModels[itemIndex + 1].sizeMode.widthMode != itemModel.sizeMode.widthMode)
+            {
+              // We've reached the end of the current row, or there are no more items to lay out, or we're
+              // about to lay out an item with a different width mode. In all cases, we're done laying out
+              // the current row of items.
+              let heightOfTallestItemInCurrentRow = updateHeightsForItemsInRow(at: rowIndex)
+              currentY += heightOfTallestItemInCurrentRow
+              indexInCurrentRow = 0
+
+              // If there are more items to layout, add vertical spacing and increment the row index
+              if itemIndex < numberOfItems - 1 {
+                currentY += metrics.verticalSpacing
+                rowIndex += 1
+              }
+            } else {
+              // We're still adding to the current row
+              indexInCurrentRow += 1
+            }
         }
-      } else {
-        // We're still adding to the current row
-        indexInCurrentRow += 1
-      }
     }
 
     if numberOfItems > 0 {

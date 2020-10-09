@@ -24,6 +24,7 @@ struct SectionInfo {
   var itemInfos: [ItemInfo]
   var footerInfo: FooterInfo
   var backgroundInfo: BackgroundInfo
+  var waterfallFlowMode: MagazineLayoutWaterfallFlowMode?
 
 }
 
